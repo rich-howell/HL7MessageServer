@@ -176,7 +176,7 @@
             Controls.Add(btnStop);
             Controls.Add(btnStart);
             Name = "MainForm";
-            Text = "MainForm";
+            Text = "HL7 Server";
             ((System.ComponentModel.ISupportInitialize)numPort).EndInit();
             ResumeLayout(false);
             PerformLayout();
