@@ -278,7 +278,7 @@
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(93, 22);
+            exitToolStripMenuItem.Size = new Size(92, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
@@ -292,21 +292,21 @@
             // messageStoreToolStripMenuItem
             // 
             messageStoreToolStripMenuItem.Name = "messageStoreToolStripMenuItem";
-            messageStoreToolStripMenuItem.Size = new Size(180, 22);
+            messageStoreToolStripMenuItem.Size = new Size(155, 22);
             messageStoreToolStripMenuItem.Text = "Message Store";
             messageStoreToolStripMenuItem.Click += messageStoreToolStripMenuItem_Click;
             // 
             // schemaConfigToolStripMenuItem
             // 
             schemaConfigToolStripMenuItem.Name = "schemaConfigToolStripMenuItem";
-            schemaConfigToolStripMenuItem.Size = new Size(180, 22);
+            schemaConfigToolStripMenuItem.Size = new Size(155, 22);
             schemaConfigToolStripMenuItem.Text = "Schema Config";
             schemaConfigToolStripMenuItem.Click += schemaConfigToolStripMenuItem_Click;
             // 
             // appSettingsToolStripMenuItem
             // 
             appSettingsToolStripMenuItem.Name = "appSettingsToolStripMenuItem";
-            appSettingsToolStripMenuItem.Size = new Size(180, 22);
+            appSettingsToolStripMenuItem.Size = new Size(155, 22);
             appSettingsToolStripMenuItem.Text = "App Settings";
             appSettingsToolStripMenuItem.Click += appSettingsToolStripMenuItem_Click;
             // 
@@ -435,7 +435,7 @@
             label5.AutoSize = true;
             label5.Location = new Point(295, 483);
             label5.Name = "label5";
-            label5.Size = new Size(77, 15);
+            label5.Size = new Size(78, 15);
             label5.TabIndex = 25;
             label5.Text = "Total Uptime:";
             // 
@@ -476,9 +476,10 @@
             Controls.Add(pnlSchemaStatus);
             Controls.Add(lblStatus);
             Controls.Add(menuStrip1);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
             MainMenuStrip = menuStrip1;
             Name = "MainForm";
-            Text = "HL7 Server";
+            Text = "HL7 Message Server";
             ((System.ComponentModel.ISupportInitialize)numPort).EndInit();
             groupBox1.ResumeLayout(false);
             groupBox2.ResumeLayout(false);
