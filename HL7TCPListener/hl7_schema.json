@@ -96,11 +96,11 @@
                 },
                 "PatientID": {
                   "Position": 3,
-                  "Required": true
+                  "Required": false
                 },
                 "PatientIdentifierList": {
                   "Position": 4,
-                  "Required": true
+                  "Required": false
                 },
                 "AlternatePatientID": {
                   "Position": 5,
@@ -108,7 +108,7 @@
                 },
                 "PatientName": {
                   "Position": 5,
-                  "Required": true
+                  "Required": false
                 },
                 "MotherMaidenName": {
                   "Position": 6,
@@ -206,11 +206,11 @@
                 },
                 "Name": {
                   "Position": 2,
-                  "Required": true
+                  "Required": false
                 },
                 "Relationship": {
                   "Position": 3,
-                  "Required": true
+                  "Required": false
                 },
                 "Address": {
                   "Position": 4,
@@ -223,7 +223,7 @@
               }
             },
             "PV1": {
-              "Required": true,
+              "Required": false,
               "Fields": {
                 "SetID": {
                   "Position": 1,
@@ -231,15 +231,15 @@
                 },
                 "PatientClass": {
                   "Position": 2,
-                  "Required": true
+                  "Required": false
                 },
                 "AssignedPatientLocation": {
                   "Position": 3,
-                  "Required": true
+                  "Required": false
                 },
                 "AdmissionType": {
                   "Position": 4,
-                  "Required": true
+                  "Required": false
                 },
                 "PreadmitNumber": {
                   "Position": 5,
@@ -247,7 +247,7 @@
                 },
                 "AttendingDoctor": {
                   "Position": 7,
-                  "Required": true
+                  "Required": false
                 },
                 "ReferringDoctor": {
                   "Position": 8,
@@ -275,7 +275,7 @@
                 },
                 "AdmitDateTime": {
                   "Position": 44,
-                  "Required": true
+                  "Required": false
                 }
               }
             }
