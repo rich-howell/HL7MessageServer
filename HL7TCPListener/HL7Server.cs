@@ -5,6 +5,7 @@ using NHapi.Model.V25.Segment;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.ComponentModel.DataAnnotations;
 
 namespace HL7TCPListener
 {
@@ -15,7 +16,10 @@ namespace HL7TCPListener
         private CancellationTokenSource? cts;
         private readonly int port;
         private readonly string? saveFolder;
-        private readonly HL7Validator? validator;
+        private HL7Validator? validator;
+
+        public event Action<string, string>? MessageProcessed;
+        public event Action<string>? AckSent;
 
         private const char VT = (char)0x0B;
         private const char FS = (char)0x1C;
@@ -41,7 +45,7 @@ namespace HL7TCPListener
             listener.Start();
             IsRunning = true;
 
-            uiLogger.Log($"[Information] Listener started on port {port}");
+            uiLogger.Info($"Listener started on port {port}");
 
             try
             {
@@ -54,24 +58,24 @@ namespace HL7TCPListener
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                uiLogger.Log($"[Error] Listener error: {ex.Message}");
+                uiLogger.Error($"Listener error: {ex.Message}");
             }
         }
 
         public void Stop()
         {
             if (!IsRunning) return;
-            uiLogger.Log("[Information] Stopping listener...");
+            uiLogger.Info("Stopping listener...");
             cts?.Cancel();
             listener?.Stop();
             IsRunning = false;
-            uiLogger.Log("[Information] Listener stopped.");
+            uiLogger.Info("Listener stopped.");
         }
 
         private async Task HandleClientAsync(TcpClient client, CancellationToken token)
         {
             var endpoint = client.Client.RemoteEndPoint?.ToString();
-            uiLogger.Log($"[Information] Connection opened: {endpoint}");
+            uiLogger.Info($"Connection opened: {endpoint}");
 
             try
             {
@@ -96,11 +100,11 @@ namespace HL7TCPListener
 
                     if (c == FS)
                     {
-                        reader.Read(); // consume CR
+                        reader.Read();
                         inMessage = false;
 
                         string hl7 = sb.ToString();
-                        uiLogger.Log($"[Information] Received message ({hl7.Length} bytes)");
+                        uiLogger.Info($"Received message ({hl7.Length} bytes)");
 
                         await ProcessMessageAsync(hl7, writer);
                         sb.Clear();
@@ -113,39 +117,39 @@ namespace HL7TCPListener
             }
             catch (Exception ex)
             {
-                uiLogger.Log($"[Error] Client error ({endpoint}): {ex.Message}");
+                uiLogger.Error($"Client error ({endpoint}): {ex.Message}");
             }
             finally
             {
                 client.Close();
-                uiLogger.Log($"[Information] Connection closed: {endpoint}");
+                uiLogger.Info($"Connection closed: {endpoint}");
             }
         }
 
         private async Task ProcessMessageAsync(string hl7, StreamWriter writer)
         {
-            uiLogger.Log("[Information] Parsing message with NHapi...");
+            uiLogger.Info("Parsing message with NHapi...");
 
             try
             {
-                // Parse incoming message
                 IMessage inbound = parser.Parse(hl7);
                 string messageType = GetMessageType(inbound);
                 string messageControlId = GetMessageControlId(inbound);
-                uiLogger.Log($"[Information] Parsed {messageType} successfully");
+                
+                uiLogger.Info($"Parsed {messageType} successfully");
 
-                // Validate message if validator available
+                MessageProcessed?.Invoke(hl7, messageType);
+
                 var (isValid, error) = validator?.Validate(inbound) ?? (true, "");
 
                 if (!isValid)
                 {
-                    uiLogger.Log($"[Error] Validation failed: {error}");
+                    uiLogger.Error($"Validation failed: {error}");
                     await SendAckAsync(writer, inbound, "AE", error);
-                    uiLogger.Log("[Error] AE ACK sent due to validation failure.");
+                    uiLogger.Error("AE ACK sent due to validation failure.");
                     return;
                 }
 
-                // Save message to file (optional)
                 if (!string.IsNullOrWhiteSpace(saveFolder))
                 {
                     try
@@ -156,30 +160,28 @@ namespace HL7TCPListener
 
                         Directory.CreateDirectory(saveFolder);
                         await File.WriteAllTextAsync(fullPath, hl7);
-                        uiLogger.Log($"[Information] Message saved to: {fileName}");
+                        uiLogger.Info($"Message saved to: {fileName}");
                     }
                     catch (Exception ex)
                     {
-                        uiLogger.Log($"[Error] Could not save message: {ex.Message}");
+                        uiLogger.Error($"Could not save message: {ex.Message}");
                     }
                 }
 
-                // Send success ACK
                 await SendAckAsync(writer, inbound, "AA");
-                uiLogger.Log("[Information] Structured ACK sent.");
+                uiLogger.Info("Structured ACK sent.");
             }
             catch (Exception ex)
             {
-                uiLogger.Log($"[Error] NHapi parse error: {ex.Message}");
+                uiLogger.Error($"NHapi parse error: {ex.Message}");
 
                 try
                 {
-                    // Try to send an AR ACK if we at least have partial inbound data
                     IMessage? inbound = null;
                     try { inbound = parser.Parse(hl7); } catch { /* ignore */ }
 
                     await SendAckAsync(writer, inbound, "AR", ex.Message);
-                    uiLogger.Log("[Error] AR ACK sent due to parse error.");
+                    uiLogger.Error("AR ACK sent due to parse error.");
                 }
                 catch
                 {
@@ -210,7 +212,7 @@ namespace HL7TCPListener
                 "2.5" => new NHapi.Model.V25.Message.ACK(),
                 "2.5.1" => new NHapi.Model.V251.Message.ACK(),
                 "2.6" => new NHapi.Model.V26.Message.ACK(),
-                _ => new NHapi.Model.V25.Message.ACK() // default fallback
+                _ => new NHapi.Model.V25.Message.ACK()
             };
 
             try
@@ -243,7 +245,6 @@ namespace HL7TCPListener
                 }
                 else
                 {
-                    // No inbound? minimal ACK
                     var msaOut = (MSA)ack.GetStructure("MSA");
                     msaOut.AcknowledgmentCode.Value = ackCode;
                     msaOut.TextMessage.Value = errorText ?? "No inbound message available";
@@ -259,6 +260,11 @@ namespace HL7TCPListener
             return ack;
         }
 
+        public void UpdateValidator(HL7Validator newValidator)
+        {
+            validator = newValidator;
+        }
+
         private async Task SendAckAsync(StreamWriter writer, IMessage? inbound, string ackCode, string? errorText = null)
         {
             try
@@ -267,6 +273,8 @@ namespace HL7TCPListener
                 string ackText = parser.Encode(ack);
 
                 await writer.WriteAsync($"{VT}{ackText}{FS}{CR}");
+
+                AckSent?.Invoke(ackText);
 
                 if (!string.IsNullOrWhiteSpace(saveFolder))
                 {
@@ -278,6 +286,7 @@ namespace HL7TCPListener
                         {
                             var msh = (MSH)inbound.GetStructure("MSH");
                             controlId = msh.MessageControlID.Value ?? "UNKNOWN";
+                            uiLogger.Warn("Message Control ID not extracted from message");
                         }
                     }
                     catch { }
@@ -285,13 +294,13 @@ namespace HL7TCPListener
                     string ackPath = Path.Combine(saveFolder, $"{DateTime.Now:yyyyMMdd_HHmmss}_{controlId}_{ackCode}_ACK.hl7");
 
                     await File.WriteAllTextAsync(ackPath, ackText);
-                    uiLogger.Log($"[Information] ACK saved to: {ackPath}");
+                    uiLogger.Info($"ACK saved to: {ackPath}");
                 }
 
             }
             catch (Exception ex)
             {
-                uiLogger.Log($"[Error] Failed to build or send ACK: {ex.Message}");
+                uiLogger.Error($"Failed to build or send ACK: {ex.Message}");
             }
         }
 

@@ -6,6 +6,11 @@ public class UILogger : ILoggerProvider, ILogger
 
     public ILogger CreateLogger(string categoryName) => this;
 
+    public void Info(string message) => Log(LogLevel.Information, new EventId(), message, null, (s, e) => s);
+    public void Warn(string message) => Log(LogLevel.Warning, new EventId(), message, null, (s, e) => s);
+    public void Error(string message, Exception? ex = null) => Log(LogLevel.Error, new EventId(), message, ex, (s, e) => s);
+    public void Debug(string message) => Log(LogLevel.Debug, new EventId(), message, null, (s, e) => s);
+
     public void Dispose() { }
 
     public IDisposable BeginScope<TState>(TState state) => default!;
