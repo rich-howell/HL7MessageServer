@@ -1,0 +1,287 @@
+{
+  "Versions": {
+    "2.5": {
+      "Messages": {
+        "ADT^A01": {
+          "Description": "Patient Admit",
+          "Segments": {
+            "MSH": {
+              "Required": true,
+              "Fields": {
+                "FieldSeparator": {
+                  "Position": 1,
+                  "Required": true
+                },
+                "EncodingCharacters": {
+                  "Position": 2,
+                  "Required": true
+                },
+                "SendingApplication": {
+                  "Position": 3,
+                  "Required": true
+                },
+                "SendingFacility": {
+                  "Position": 4,
+                  "Required": true
+                },
+                "ReceivingApplication": {
+                  "Position": 5,
+                  "Required": false
+                },
+                "ReceivingFacility": {
+                  "Position": 6,
+                  "Required": false
+                },
+                "DateTimeOfMessage": {
+                  "Position": 7,
+                  "Required": true
+                },
+                "Security": {
+                  "Position": 8,
+                  "Required": false
+                },
+                "MessageType": {
+                  "Position": 9,
+                  "Required": true
+                },
+                "MessageControlID": {
+                  "Position": 10,
+                  "Required": true
+                },
+                "ProcessingID": {
+                  "Position": 11,
+                  "Required": true
+                },
+                "VersionID": {
+                  "Position": 12,
+                  "Required": true
+                }
+              }
+            },
+            "EVN": {
+              "Required": true,
+              "Fields": {
+                "EventTypeCode": {
+                  "Position": 1,
+                  "Required": true
+                },
+                "RecordedDateTime": {
+                  "Position": 2,
+                  "Required": true
+                },
+                "DateTimePlannedEvent": {
+                  "Position": 3,
+                  "Required": false
+                },
+                "EventReasonCode": {
+                  "Position": 4,
+                  "Required": false
+                },
+                "OperatorID": {
+                  "Position": 5,
+                  "Required": false
+                },
+                "EventOccurred": {
+                  "Position": 6,
+                  "Required": false
+                }
+              }
+            },
+            "PID": {
+              "Required": true,
+              "Fields": {
+                "SetID": {
+                  "Position": 1,
+                  "Required": false
+                },
+                "PatientID": {
+                  "Position": 3,
+                  "Required": true
+                },
+                "PatientIdentifierList": {
+                  "Position": 4,
+                  "Required": true
+                },
+                "AlternatePatientID": {
+                  "Position": 5,
+                  "Required": false
+                },
+                "PatientName": {
+                  "Position": 5,
+                  "Required": true
+                },
+                "MotherMaidenName": {
+                  "Position": 6,
+                  "Required": false
+                },
+                "DateTimeOfBirth": {
+                  "Position": 7,
+                  "Required": false
+                },
+                "AdministrativeSex": {
+                  "Position": 8,
+                  "Required": false
+                },
+                "PatientAlias": {
+                  "Position": 9,
+                  "Required": false
+                },
+                "Race": {
+                  "Position": 10,
+                  "Required": false
+                },
+                "PatientAddress": {
+                  "Position": 11,
+                  "Required": false
+                },
+                "PhoneNumberHome": {
+                  "Position": 13,
+                  "Required": false
+                },
+                "PhoneNumberBusiness": {
+                  "Position": 14,
+                  "Required": false
+                },
+                "PrimaryLanguage": {
+                  "Position": 15,
+                  "Required": false
+                },
+                "MaritalStatus": {
+                  "Position": 16,
+                  "Required": false
+                },
+                "Religion": {
+                  "Position": 17,
+                  "Required": false
+                },
+                "PatientAccountNumber": {
+                  "Position": 18,
+                  "Required": false
+                }
+              }
+            },
+            "PD1": {
+              "Required": false,
+              "Fields": {
+                "LivingDependency": {
+                  "Position": 1,
+                  "Required": false
+                },
+                "LivingArrangement": {
+                  "Position": 2,
+                  "Required": false
+                },
+                "PatientPrimaryFacility": {
+                  "Position": 3,
+                  "Required": false
+                },
+                "PatientPrimaryCareProvider": {
+                  "Position": 4,
+                  "Required": false
+                },
+                "StudentIndicator": {
+                  "Position": 5,
+                  "Required": false
+                },
+                "Handicap": {
+                  "Position": 6,
+                  "Required": false
+                },
+                "LivingWillCode": {
+                  "Position": 7,
+                  "Required": false
+                },
+                "OrganDonorCode": {
+                  "Position": 8,
+                  "Required": false
+                }
+              }
+            },
+            "NK1": {
+              "Required": false,
+              "Fields": {
+                "SetID": {
+                  "Position": 1,
+                  "Required": false
+                },
+                "Name": {
+                  "Position": 2,
+                  "Required": true
+                },
+                "Relationship": {
+                  "Position": 3,
+                  "Required": true
+                },
+                "Address": {
+                  "Position": 4,
+                  "Required": false
+                },
+                "PhoneNumber": {
+                  "Position": 5,
+                  "Required": false
+                }
+              }
+            },
+            "PV1": {
+              "Required": true,
+              "Fields": {
+                "SetID": {
+                  "Position": 1,
+                  "Required": false
+                },
+                "PatientClass": {
+                  "Position": 2,
+                  "Required": true
+                },
+                "AssignedPatientLocation": {
+                  "Position": 3,
+                  "Required": true
+                },
+                "AdmissionType": {
+                  "Position": 4,
+                  "Required": true
+                },
+                "PreadmitNumber": {
+                  "Position": 5,
+                  "Required": false
+                },
+                "AttendingDoctor": {
+                  "Position": 7,
+                  "Required": true
+                },
+                "ReferringDoctor": {
+                  "Position": 8,
+                  "Required": false
+                },
+                "ConsultingDoctor": {
+                  "Position": 9,
+                  "Required": false
+                },
+                "HospitalService": {
+                  "Position": 10,
+                  "Required": false
+                },
+                "TemporaryLocation": {
+                  "Position": 11,
+                  "Required": false
+                },
+                "PreadmitTestIndicator": {
+                  "Position": 12,
+                  "Required": false
+                },
+                "ReadmissionIndicator": {
+                  "Position": 13,
+                  "Required": false
+                },
+                "AdmitDateTime": {
+                  "Position": 44,
+                  "Required": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

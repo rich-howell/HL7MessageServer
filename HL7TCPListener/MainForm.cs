@@ -50,9 +50,12 @@
             int port = (int)numPort.Value;
             string folder = txtfolderPath.Text;
 
+            var schema = HL7Schema.Load("hl7_schema.json");
+            var validator = new HL7Validator(schema, _uiLogger);
+
             try
             {
-                server = new HL7Server(_uiLogger, port, folder);
+                server = new HL7Server(_uiLogger, port, folder, validator);
 
                 _uiLogger.Log($"[Information] Starting listener on selected port {port}...");
                 _ = Task.Run(() => server.StartAsync());

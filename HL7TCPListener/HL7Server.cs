@@ -15,6 +15,7 @@ namespace HL7TCPListener
         private CancellationTokenSource? cts;
         private readonly int port;
         private readonly string? saveFolder;
+        private readonly HL7Validator? validator;
 
         private const char VT = (char)0x0B;
         private const char FS = (char)0x1C;
@@ -24,11 +25,12 @@ namespace HL7TCPListener
 
         public bool IsRunning { get; private set; }
 
-        public HL7Server(UILogger logger, int port = 2575, string? saveFolder = null)
+        public HL7Server(UILogger logger, int port = 2575, string? saveFolder = null, HL7Validator? validator = null)
         {
             uiLogger = logger;
             this.port = port;
             this.saveFolder = saveFolder;
+            this.validator = validator;
         }
 
         public async Task StartAsync()
@@ -126,12 +128,24 @@ namespace HL7TCPListener
 
             try
             {
+                // Parse incoming message
                 IMessage inbound = parser.Parse(hl7);
                 string messageType = GetMessageType(inbound);
                 string messageControlId = GetMessageControlId(inbound);
-
                 uiLogger.Log($"[Information] Parsed {messageType} successfully");
 
+                // Validate message if validator available
+                var (isValid, error) = validator?.Validate(inbound) ?? (true, "");
+
+                if (!isValid)
+                {
+                    uiLogger.Log($"[Error] Validation failed: {error}");
+                    await SendAckAsync(writer, inbound, "AE", error);
+                    uiLogger.Log("[Error] AE ACK sent due to validation failure.");
+                    return;
+                }
+
+                // Save message to file (optional)
                 if (!string.IsNullOrWhiteSpace(saveFolder))
                 {
                     try
@@ -140,7 +154,7 @@ namespace HL7TCPListener
                         string fileName = $"{timestamp}_{messageControlId}.hl7";
                         string fullPath = Path.Combine(saveFolder, fileName);
 
-                        Directory.CreateDirectory(saveFolder); // just in case
+                        Directory.CreateDirectory(saveFolder);
                         await File.WriteAllTextAsync(fullPath, hl7);
                         uiLogger.Log($"[Information] Message saved to: {fileName}");
                     }
@@ -150,48 +164,137 @@ namespace HL7TCPListener
                     }
                 }
 
-                IMessage ack = BuildAck(inbound);
-                string ackText = parser.Encode(ack);
-
-                await writer.WriteAsync($"{VT}{ackText}{FS}{CR}");
+                // Send success ACK
+                await SendAckAsync(writer, inbound, "AA");
                 uiLogger.Log("[Information] Structured ACK sent.");
             }
             catch (Exception ex)
             {
                 uiLogger.Log($"[Error] NHapi parse error: {ex.Message}");
+
+                try
+                {
+                    // Try to send an AR ACK if we at least have partial inbound data
+                    IMessage? inbound = null;
+                    try { inbound = parser.Parse(hl7); } catch { /* ignore */ }
+
+                    await SendAckAsync(writer, inbound, "AR", ex.Message);
+                    uiLogger.Log("[Error] AR ACK sent due to parse error.");
+                }
+                catch
+                {
+                    uiLogger.Log("[Critical] Could not send AR ACK — fatal parse failure.");
+                }
             }
         }
 
-        private IMessage BuildAck(IMessage inbound)
+        private IMessage BuildAck(IMessage inbound, string ackCode = "AA", string? errorText = null, string? versionOverride = null)
         {
-            // Use NHapi’s built-in ACK model
-            var ack = new ACK();
+            string version = versionOverride ?? "2.5";
 
-            // Get fields from original message
-            var mshIn = (MSH)inbound.GetStructure("MSH");
-            var mshOut = ack.MSH;
-            var msaOut = ack.MSA;
+            try
+            {
+                if(inbound != null)
+                {
+                    var mshIn = (MSH)inbound.GetStructure("MSH");
+                    version = mshIn.VersionID.VersionID.Value ?? version;
+                }
+            }
+            catch { /* ignore */ }
 
-            // Populate MSH
-            mshOut.FieldSeparator.Value = "|";
-            mshOut.EncodingCharacters.Value = "^~\\&";
-            mshOut.SendingApplication.NamespaceID.Value = mshIn.ReceivingApplication.NamespaceID.Value;
-            mshOut.SendingFacility.NamespaceID.Value = mshIn.ReceivingApplication.NamespaceID.Value;           
-            mshOut.ReceivingApplication.NamespaceID.Value = mshIn.SendingApplication.NamespaceID.Value;
-            mshOut.ReceivingFacility.NamespaceID.Value = mshIn.SendingFacility.NamespaceID.Value;
-            mshOut.DateTimeOfMessage.Time.Value = DateTime.Now.ToString("yyyyMMddHHmmss");
-            mshOut.MessageType.MessageCode.Value = "ACK";
-            mshOut.MessageType.TriggerEvent.Value = mshIn.MessageType.TriggerEvent.Value;
-            mshOut.MessageControlID.Value = mshIn.MessageControlID.Value;
-            mshOut.ProcessingID.ProcessingID.Value = "P";
-            mshOut.VersionID.VersionID.Value = mshIn.VersionID.VersionID.Value;
+            IMessage ack = version switch
+            {
+                "2.3" => new NHapi.Model.V23.Message.ACK(),
+                "2.3.1" => new NHapi.Model.V231.Message.ACK(),
+                "2.4" => new NHapi.Model.V24.Message.ACK(),
+                "2.5" => new NHapi.Model.V25.Message.ACK(),
+                "2.5.1" => new NHapi.Model.V251.Message.ACK(),
+                "2.6" => new NHapi.Model.V26.Message.ACK(),
+                _ => new NHapi.Model.V25.Message.ACK() // default fallback
+            };
 
-            // Populate MSA
-            msaOut.AcknowledgmentCode.Value = "AA";
-            msaOut.MessageControlID.Value = mshIn.MessageControlID.Value;
+            try
+            {
+                if (inbound != null)
+                {
+                    var mshIn = (MSH)inbound.GetStructure("MSH");
+                    var mshOut = (MSH)ack.GetStructure("MSH");
+                    var msaOut = (MSA)ack.GetStructure("MSA");
+
+                    // MSH
+                    mshOut.FieldSeparator.Value = "|";
+                    mshOut.EncodingCharacters.Value = "^~\\&";
+                    mshOut.SendingApplication.NamespaceID.Value = mshIn.ReceivingApplication.NamespaceID.Value;
+                    mshOut.SendingFacility.NamespaceID.Value = mshIn.ReceivingFacility.NamespaceID.Value;
+                    mshOut.ReceivingApplication.NamespaceID.Value = mshIn.SendingApplication.NamespaceID.Value;
+                    mshOut.ReceivingFacility.NamespaceID.Value = mshIn.SendingFacility.NamespaceID.Value;
+                    mshOut.DateTimeOfMessage.Time.Value = DateTime.Now.ToString("yyyyMMddHHmmss");
+                    mshOut.MessageType.MessageCode.Value = "ACK";
+                    mshOut.MessageType.TriggerEvent.Value = mshIn.MessageType.TriggerEvent.Value;
+                    mshOut.MessageControlID.Value = mshIn.MessageControlID.Value;
+                    mshOut.ProcessingID.ProcessingID.Value = "P";
+                    mshOut.VersionID.VersionID.Value = version;
+
+                    // MSA
+                    msaOut.AcknowledgmentCode.Value = ackCode;
+                    msaOut.MessageControlID.Value = mshIn.MessageControlID.Value;
+                    if (!string.IsNullOrWhiteSpace(errorText))
+                        msaOut.TextMessage.Value = errorText;
+                }
+                else
+                {
+                    // No inbound? minimal ACK
+                    var msaOut = (MSA)ack.GetStructure("MSA");
+                    msaOut.AcknowledgmentCode.Value = ackCode;
+                    msaOut.TextMessage.Value = errorText ?? "No inbound message available";
+                }
+            }
+            catch (Exception ex)
+            {
+                var msaOut = (MSA)ack.GetStructure("MSA");
+                msaOut.AcknowledgmentCode.Value = "AR";
+                msaOut.TextMessage.Value = $"ACK generation error: {ex.Message}";
+            }
 
             return ack;
         }
+
+        private async Task SendAckAsync(StreamWriter writer, IMessage? inbound, string ackCode, string? errorText = null)
+        {
+            try
+            {
+                IMessage ack = BuildAck(inbound, ackCode, errorText);
+                string ackText = parser.Encode(ack);
+
+                await writer.WriteAsync($"{VT}{ackText}{FS}{CR}");
+
+                if (!string.IsNullOrWhiteSpace(saveFolder))
+                {
+                    string controlId = "UNKNOWN";
+
+                    try
+                    {
+                        if(inbound != null)
+                        {
+                            var msh = (MSH)inbound.GetStructure("MSH");
+                            controlId = msh.MessageControlID.Value ?? "UNKNOWN";
+                        }
+                    }
+                    catch { }
+
+                    string ackPath = Path.Combine(saveFolder, $"{DateTime.Now:yyyyMMdd_HHmmss}_{controlId}_{ackCode}_ACK.hl7");
+
+                    await File.WriteAllTextAsync(ackPath, ackText);
+                    uiLogger.Log($"[Information] ACK saved to: {ackPath}");
+                }
+
+            }
+            catch (Exception ex)
+            {
+                uiLogger.Log($"[Error] Failed to build or send ACK: {ex.Message}");
+            }
+        }
+
 
         private static string GetMessageControlId(IMessage msg)
         {
