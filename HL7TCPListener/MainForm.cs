@@ -19,6 +19,8 @@ namespace HL7TCPListener
         {
             InitializeComponent();
 
+            this.Icon = Properties.Resources.app_icon;
+
             _uiLogger = new UILogger();
             _uiLogger.OnLog += UILogger_OnLog;
 
