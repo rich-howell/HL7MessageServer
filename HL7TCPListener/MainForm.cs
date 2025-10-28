@@ -170,9 +170,18 @@ namespace HL7TCPListener
         {
             if (string.IsNullOrWhiteSpace(txtfolderPath.Text.Trim()))
             {
-                MessageBox.Show("Unable to start listener, select a save location",
-                    "Unable to start", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                try
+                {
+                    var outDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    outDir = Path.Combine(outDir, "HL7Inbox");
+                    txtfolderPath.Text = outDir;
+                    _uiLogger.Info("Output Directory Not Specificed, defaulting to fallack");
+                }
+                catch (Exception ex)
+                {
+                    _uiLogger.Error($"Error setting output directory {ex}");
+                    return;
+                }
             }
 
             btnStart.Enabled = false;
