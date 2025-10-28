@@ -1,0 +1,37 @@
+name: "💡 Feature Request"
+description: "Suggest a new idea or enhancement"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea? Let's make it real! Please describe what you'd like to see added or improved.
+  - type: input
+    id: title
+    attributes:
+      label: "Feature Title"
+      placeholder: "Dark mode for the dashboard"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Is your feature request related to a problem?"
+      placeholder: "It's hard to read in low light conditions"
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed Solution"
+      placeholder: "Add a toggle in settings to switch themes"
+      validations:
+        required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternative Solutions"
+      placeholder: "Maybe detect system theme automatically?"
+  - type: textarea
+    id: additional
+    attributes:
+      label: "Additional Context"
+      placeholder: "Any screenshots, mockups, or references?"

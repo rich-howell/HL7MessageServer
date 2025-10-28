@@ -1,0 +1,58 @@
+name: "🐞 Bug Report"
+description: "Report a reproducible bug or unexpected behaviour"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill in the following details so we can squash it faster than a coffee-fuelled dev on release night ☕🐛
+  - type: input
+    id: summary
+    attributes:
+      label: "Summary"
+      description: "Short summary of the bug"
+      placeholder: "It crashes when I press the red button"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Tell us exactly how to reproduce the problem"
+      placeholder: |
+        1. Go to '...'
+        2. Click '...'
+        3. Observe '...'
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behaviour"
+      description: "What did you expect to happen?"
+      placeholder: "It should start the server without crashing"
+  - type: textarea
+    id: actual
+    attributes:
+      label: "Actual Behaviour"
+      description: "What actually happened?"
+  - type: input
+    id: version
+    attributes:
+      label: "Version / Commit Hash"
+      description: "What version or commit were you on?"
+      placeholder: "v0.4.2 / 4a2bc3f"
+  - type: dropdown
+    id: os
+    attributes:
+      label: "Operating System"
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs / Screenshots"
+      description: "If relevant, paste logs or attach screenshots"

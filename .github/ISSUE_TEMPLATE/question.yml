@@ -1,0 +1,25 @@
+name: "❓ Question / Help"
+description: "Ask a question or get help with the project"
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got a question? No worries — ask away! We'll do our best to help. 🙌
+  - type: input
+    id: topic
+    attributes:
+      label: "Topic"
+      placeholder: "Configuration, Build, API usage, etc."
+  - type: textarea
+    id: question
+    attributes:
+      label: "Your Question"
+      placeholder: "How do I set up the server for HTTPS?"
+      validations:
+        required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: "Context or Error Output"
+      description: "If applicable, share logs, screenshots, or examples"

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "📚 Documentation"
+    url: "https://github.com/rich-howell/HL7MessageServer/wiki"
+    about: "Read the official docs before filing an issue."
+  - name: "💬 Discussions"
+    url: "https://github.com/rich-howell/HL7MessageServer/discussions"
+    about: "For general questions and idea sharing."
