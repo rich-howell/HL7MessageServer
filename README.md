@@ -26,7 +26,6 @@ Built with **.NET 8**, **NHapi**, and a focus on clarity, diagnostics, and simpl
 ---
 
 ## 🚀 How To Use
-*(Full documentation coming soon)*
 
 1. Launch the application.
 2. Set the **listening port** and **save location** for incoming HL7 messages.
@@ -38,7 +37,6 @@ Built with **.NET 8**, **NHapi**, and a focus on clarity, diagnostics, and simpl
 ---
 
 ## ⚙️ Installing
-*(Setup guide coming soon)*
 
 - **Option 1:** Run the compiled `.exe` from the Releases page.  
 - **Option 2:** Build the project from source using Visual Studio 2022 or later.  
@@ -49,7 +47,7 @@ Built with **.NET 8**, **NHapi**, and a focus on clarity, diagnostics, and simpl
 
 ## 🆘 Help
 
-If you need assistance or want to learn more, check out the **[Wiki](./wiki)** within this repository.  
+If you need assistance or want to learn more, check out the **[Wiki](https://github.com/rich-howell/HL7MessageServer/wiki)** within this repository.  
 It includes guides on:
 - Understanding the schema system  
 - Configuring validation rules  
@@ -61,7 +59,7 @@ It includes guides on:
 ## 🐞 Issues
 
 If you discover a bug or have a feature request, please open a new issue in the  
-**[Issues](../../issues)** section of this repository.  
+**[Issues](https://github.com/rich-howell/HL7MessageServer/issues)** section of this repository.  
 
 ---
 
