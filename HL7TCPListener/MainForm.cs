@@ -384,24 +384,38 @@ namespace HL7TCPListener
         {
             if (!_isExit)
             {
+                e.Cancel = true;
+                Hide();
+
+                // Save config
                 var config = new AppConfig
                 {
                     Port = (int)numPort.Value,
                     FolderPath = txtfolderPath.Text.Trim()
                 };
-
                 SaveConfig(config);
 
+                return;
+            }
+
+            // Stop background stuff
+            try
+            {
+                timer1?.Stop();
+                timer1?.Dispose();
+
+                server?.Stop();
                 trayIcon.Visible = false;
                 trayIcon.Dispose();
-                try { server?.Stop(); } catch { }
-                e.Cancel = true;
-                Hide();
-                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Cleanup error: {ex.Message}");
             }
 
             base.OnFormClosing(e);
         }
+
 
         protected override void OnResize(EventArgs e)
         {
