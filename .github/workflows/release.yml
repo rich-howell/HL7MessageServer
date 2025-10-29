@@ -1,0 +1,91 @@
+name: 🚀 Build & Release HL7 Message Server
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: 🧰 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed so we can get all commit history for changelog
+
+      - name: 🧩 Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 🏗️ Publish self-contained executable
+        run: |
+          cd HL7TCPListener
+          dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: 🔢 Get version from version.txt
+        id: version
+        run: |
+          $version = Get-Content ./version.txt | Select-String -Pattern '(\d+\.\d+\.\d+)' | ForEach-Object { $_.Matches.Value }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: 🗜️ Package published build
+        run: |
+          $zipName = "HL7-Message-Server-v${{ steps.version.outputs.version }}.zip"
+          $publishDir = "HL7TCPListener/bin/Release/net8.0-windows/win-x64/publish"
+          Compress-Archive -Path "$publishDir/*" -DestinationPath "HL7TCPListener/bin/Release/$zipName"
+          Write-Host "Created archive: $zipName"
+
+      - name: 📝 Generate release notes
+        id: changelog
+        run: |
+          # Find the last tag
+          $lastTag = git describe --tags --abbrev=0 2>$null
+          if (-not $lastTag) { $lastTag = "" }
+
+          Write-Host "Last tag: $lastTag"
+
+          if ($lastTag -ne "") {
+            $notes = git log $lastTag..HEAD --pretty=format:"- %s (%an)" | Out-String
+          } else {
+            $notes = git log --pretty=format:"- %s (%an)" | Out-String
+          }
+
+          if (-not $notes) { $notes = "No changes listed." }
+
+          $notes | Out-File release_notes.md -Encoding utf8
+          echo "notes<<EOF" >> $env:GITHUB_OUTPUT
+          cat release_notes.md >> $env:GITHUB_OUTPUT
+          echo "EOF" >> $env:GITHUB_OUTPUT
+
+      - name: 🏷️ Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: "HL7 Message Server v${{ steps.version.outputs.version }}"
+          draft: false
+          prerelease: false
+          body: |
+            ## 🚀 HL7 Message Server v${{ steps.version.outputs.version }}
+
+            🧩 **Highlights**
+            - Real-time HL7 message listener and validator
+            - Automatic ACK generation and saving
+            - Tray integration with uptime tracking
+            - JSON-based configuration persistence
+
+            🧠 Built with .NET 8  
+            💾 Self-contained executable — no install required  
+            💬 Includes `hl7_schema.json` in package
+
+            ### Recent Changes
+            ${{ steps.changelog.outputs.notes }}
+
+            _Built automatically on merge to main._
+          files: |
+            HL7TCPListener/bin/Release/HL7-Message-Server-v${{ steps.version.outputs.version }}.zip
