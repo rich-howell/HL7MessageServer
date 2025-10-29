@@ -5,6 +5,10 @@
 A lightweight Windows application for receiving, validating, and acknowledging HL7 messages over TCP (MLLP).  
 Built with **.NET 8**, **NHapi**, and a focus on clarity, diagnostics, and simplicity, ideal for local testing or integration development environments.
 
+[![GitHub Release](https://img.shields.io/github/v/release/rich-howell/HL7MessageServer?style=for-the-badge&labelColor=%23333&color=%23d40000&)](https://github.com/rich-howell/HL7MessageServer/releases)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/rich-howell/HL7MessageServer/total?style=for-the-badge&labelColor=%23333&color=%23d40000)](https://github.com/rich-howell/HL7MessageServer/releases)
+[![GitHub Repo stars](https://img.shields.io/github/stars/rich-howell/HL7MessageServer?style=for-the-badge&labelColor=%23333&color=%23d40000)](https://github.com/rich-howell/HL7MessageServer/stargazers)
+
 ---
 
 ## 🖼️ Application Preview
