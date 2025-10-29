@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: windows-latest
@@ -12,6 +15,8 @@ jobs:
     steps:
       - name: 🧰 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed so we can get all commit history for changelog
 
       - name: 🧩 Setup .NET SDK
         uses: actions/setup-dotnet@v4
@@ -36,6 +41,28 @@ jobs:
           Compress-Archive -Path "$publishDir/*" -DestinationPath "HL7TCPListener/bin/Release/$zipName"
           Write-Host "Created archive: $zipName"
 
+      - name: 📝 Generate release notes
+        id: changelog
+        run: |
+          # Find the last tag
+          $lastTag = git describe --tags --abbrev=0 2>$null
+          if (-not $lastTag) { $lastTag = "" }
+
+          Write-Host "Last tag: $lastTag"
+
+          if ($lastTag -ne "") {
+            $notes = git log $lastTag..HEAD --pretty=format:"- %s (%an)" | Out-String
+          } else {
+            $notes = git log --pretty=format:"- %s (%an)" | Out-String
+          }
+
+          if (-not $notes) { $notes = "No changes listed." }
+
+          $notes | Out-File release_notes.md -Encoding utf8
+          echo "notes<<EOF" >> $env:GITHUB_OUTPUT
+          cat release_notes.md >> $env:GITHUB_OUTPUT
+          echo "EOF" >> $env:GITHUB_OUTPUT
+
       - name: 🏷️ Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -52,9 +79,12 @@ jobs:
             - Tray integration with uptime tracking
             - JSON-based configuration persistence
 
-            🧠 Built with .NET 8
-            💾 Self-contained executable — no install required
+            🧠 Built with .NET 8  
+            💾 Self-contained executable — no install required  
             💬 Includes `hl7_schema.json` in package
+
+            ### Recent Changes
+            ${{ steps.changelog.outputs.notes }}
 
             _Built automatically on merge to main._
           files: |
