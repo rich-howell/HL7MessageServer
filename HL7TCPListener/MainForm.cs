@@ -25,7 +25,28 @@ namespace HL7TCPListener
             _uiLogger.OnLog += UILogger_OnLog;
 
             var config = LoadConfig();
-            numPort.Value = config.Port;
+            int portMax = (int)numPort.Maximum;
+            int portMin = (int)numPort.Minimum;
+
+            if (config.Port < portMin || config.Port > portMax)
+            {
+                MessageBox.Show(
+                    $"The port number in appsettings.json ({config.Port}) is outside the allowed range.\n" +
+                    $"Please select a value between {portMin} and {portMax}.",
+                    "Invalid Configuration Value",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+
+                numPort.Value = portMin;
+                _uiLogger.Warn($"Invalid port in configuration ({config.Port}). Reverting to minimum allowed value {portMin}.");
+
+            }
+            else
+            {
+                numPort.Value = config.Port;
+            }
+
             txtfolderPath.Text = config.FolderPath;
 
             btnCopyLastMessage.Enabled = false;
