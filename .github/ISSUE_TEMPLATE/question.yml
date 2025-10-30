@@ -16,8 +16,8 @@ body:
     attributes:
       label: "Your Question"
       placeholder: "How do I set up the server for HTTPS?"
-      validations:
-        required: true
+    validations:
+      required: true
   - type: textarea
     id: context
     attributes:

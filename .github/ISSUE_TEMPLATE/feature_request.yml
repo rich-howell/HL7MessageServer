@@ -23,8 +23,8 @@ body:
     attributes:
       label: "Proposed Solution"
       placeholder: "Add a toggle in settings to switch themes"
-      validations:
-        required: true
+    validations:
+      required: true
   - type: textarea
     id: alternatives
     attributes:
