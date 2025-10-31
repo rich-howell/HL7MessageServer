@@ -1,6 +1,10 @@
 name: 🚦 Run Tests on HL7 Message Server
 
-on: [push, pull_request]
+on:
+  pull_request: 
+    types: [opened, synchronize, reopened]
+    branches:
+      - '**'
 
 jobs:
   test:
