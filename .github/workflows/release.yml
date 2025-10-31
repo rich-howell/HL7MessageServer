@@ -7,44 +7,92 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read  # Needed to read PR labels
 
 jobs:
   build-and-release:
     runs-on: windows-latest
 
     steps:
+      - name: 🏷️ Check last merged PR labels
+        id: label_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Fetch recently merged PRs targeting main
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "closed",
+              sort: "updated",
+              direction: "desc",
+              per_page: 5
+            });
+
+            // Find the most recent one that was merged
+            const mergedPR = prs.find(pr => pr.merged_at && pr.base.ref === "main");
+
+            if (!mergedPR) {
+              console.log("⚠️ No merged PR found for this push - proceeding with release.");
+              core.setOutput("is_skippable", false);
+              return;
+            }
+
+            const labels = mergedPR.labels.map(l => l.name.toLowerCase());
+            const skipLabels = ["chore"]; // add more later e.g. "ci", "docs"
+            const isSkippable = labels.some(l => skipLabels.includes(l));
+
+            console.log("Latest merged PR:", mergedPR.title);
+            console.log("Labels:", labels);
+            console.log("Is skippable:", isSkippable);
+
+            core.setOutput("is_skippable", isSkippable);
+            core.setOutput("merged_pr_title", mergedPR.title);
+            core.setOutput("merged_pr_number", mergedPR.number);
+
+      - name: 🛑 Skip release for skippable PRs
+        if: steps.label_check.outputs.is_skippable == 'true'
+        run: |
+          echo "🛠️ Skipping release: PR labelled as a skip type (e.g. chore)"
+          exit 0
+
       - name: 🧰 Checkout repository
+        if: steps.label_check.outputs.is_skippable != 'true'
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed so we can get all commit history for changelog
+          fetch-depth: 0
 
       - name: 🧩 Setup .NET SDK
+        if: steps.label_check.outputs.is_skippable != 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
       - name: 🏗️ Publish self-contained executable
+        if: steps.label_check.outputs.is_skippable != 'true'
         run: |
-          cd HL7TCPListener
+          cd src/HL7Forge.Gui
           dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true
 
       - name: 🔢 Get version from version.txt
+        if: steps.label_check.outputs.is_skippable != 'true'
         id: version
         run: |
           $version = Get-Content ./version.txt | Select-String -Pattern '(\d+\.\d+\.\d+)' | ForEach-Object { $_.Matches.Value }
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: 🗜️ Package published build
+        if: steps.label_check.outputs.is_skippable != 'true'
         run: |
-          $zipName = "HL7-Message-Server-v${{ steps.version.outputs.version }}.zip"
-          $publishDir = "HL7TCPListener/bin/Release/net8.0-windows/win-x64/publish"
-          Compress-Archive -Path "$publishDir/*" -DestinationPath "HL7TCPListener/bin/Release/$zipName"
+          $zipName = "HL7-Forge-v${{ steps.version.outputs.version }}.zip"
+          $publishDir = "src/HL7Forge.Gui/bin/Release/net8.0-windows/win-x64/publish"
+          Compress-Archive -Path "$publishDir/*" -DestinationPath "src/HL7Forge.Gui/bin/Release/$zipName"
           Write-Host "Created archive: $zipName"
 
       - name: 📝 Generate release notes
+        if: steps.label_check.outputs.is_skippable != 'true'
         id: changelog
         run: |
-          # Find the last tag
           $lastTag = git describe --tags --abbrev=0 2>$null
           if (-not $lastTag) { $lastTag = "" }
 
@@ -64,28 +112,22 @@ jobs:
           echo "EOF" >> $env:GITHUB_OUTPUT
 
       - name: 🏷️ Create GitHub Release
+        if: steps.label_check.outputs.is_skippable != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          name: "HL7 Message Server v${{ steps.version.outputs.version }}"
+          name: "HL7 Forge v${{ steps.version.outputs.version }}"
           draft: false
           prerelease: false
           body: |
-            ## 🚀 HL7 Message Server v${{ steps.version.outputs.version }}
-
-            🧩 **Highlights**
-            - Real-time HL7 message listener and validator
-            - Automatic ACK generation and saving
-            - Tray integration with uptime tracking
-            - JSON-based configuration persistence
+            ## 🚀 HL7 Forge v${{ steps.version.outputs.version }}
 
             🧠 Built with .NET 8  
-            💾 Self-contained executable — no install required  
-            💬 Includes `hl7_schema.json` in package
+            💾 Self-contained executable - no install required  
 
             ### Recent Changes
             ${{ steps.changelog.outputs.notes }}
 
-            _Built automatically on merge to main._
+            _Built automatically from PR #${{ steps.label_check.outputs.merged_pr_number }} - "${{ steps.label_check.outputs.merged_pr_title }}."_
           files: |
-            HL7TCPListener/bin/Release/HL7-Message-Server-v${{ steps.version.outputs.version }}.zip
+            src/HL7Forge.Gui/bin/Release/HL7-Forge-v${{ steps.version.outputs.version }}.zip
