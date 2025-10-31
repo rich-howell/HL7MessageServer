@@ -662,5 +662,10 @@ namespace HL7TCPListener
                 Process.Start("explorer.exe", "/select,\"appsettings.json\"");
             }
         }
+
+        private void txtLogs_TextChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }

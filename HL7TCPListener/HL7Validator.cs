@@ -17,6 +17,9 @@ namespace HL7TCPListener
 
         public (bool IsValid, string Error) Validate(IMessage message)
         {
+            if (message == null)
+                return (false, "Message is null and cannot be validated.");
+
             var terser = new Terser(message);
             string version = terser.Get("/MSH-12") ?? "2.5";
             string messageCode = terser.Get("/MSH-9-1");
@@ -49,7 +52,6 @@ namespace HL7TCPListener
 
             return (true, "");
         }
-
     }
 }
 

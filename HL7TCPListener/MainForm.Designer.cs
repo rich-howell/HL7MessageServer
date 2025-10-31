@@ -176,6 +176,7 @@
             txtLogs.Size = new Size(423, 261);
             txtLogs.TabIndex = 12;
             txtLogs.Text = "";
+            txtLogs.TextChanged += txtLogs_TextChanged;
             // 
             // btnCopyLogs
             // 
@@ -278,7 +279,7 @@
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(92, 22);
+            exitToolStripMenuItem.Size = new Size(93, 22);
             exitToolStripMenuItem.Text = "Exit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
@@ -435,7 +436,7 @@
             label5.AutoSize = true;
             label5.Location = new Point(295, 483);
             label5.Name = "label5";
-            label5.Size = new Size(78, 15);
+            label5.Size = new Size(77, 15);
             label5.TabIndex = 25;
             label5.Text = "Total Uptime:";
             // 
