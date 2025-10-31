@@ -1,0 +1,149 @@
+name: 🔍 Version Consistency Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version-check:
+    name: Check version bump
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: 🏷️ Check PR labels
+        id: label_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const labels = pr.labels.map(l => l.name.toLowerCase());
+            const skipLabels = ["chore"];
+            const isSkippable = labels.some(l => skipLabels.includes(l));
+
+            console.log("PR Labels:", labels);
+            console.log("Is skippable:", isSkippable);
+
+            core.setOutput("is_skippable", isSkippable);
+
+      - name: 🛑 Skip version check for skippable PRs
+        if: steps.label_check.outputs.is_skippable == 'true'
+        run: |
+          echo "🛠️ This PR is labelled as a skip type (e.g. chore) — skipping version check."
+          exit 0
+
+      - name: 🛒 Checkout main
+        if: steps.label_check.outputs.is_skippable != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: 🛒 Checkout PR branch
+        if: steps.label_check.outputs.is_skippable != 'true'
+        uses: actions/checkout@v4
+        with:
+          path: pr
+
+      - name: 📖 Get main version (from version.txt or latest release)
+        if: steps.label_check.outputs.is_skippable != 'true'
+        id: main_version
+        run: |
+          if [ -f main/version.txt ]; then
+            MAIN_VERSION=$(cat main/version.txt | tr -d ' \n\r')
+          else
+            echo "No version.txt in main branch, falling back to latest release..."
+            MAIN_VERSION=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+          fi
+          echo "Main version: $MAIN_VERSION"
+          echo "main_version=$MAIN_VERSION" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📖 Get PR version
+        if: steps.label_check.outputs.is_skippable != 'true'
+        id: pr_version
+        run: |
+          if [ -f pr/version.txt ]; then
+            PR_VERSION=$(cat pr/version.txt | tr -d ' \n\r')
+            echo "PR version: $PR_VERSION"
+            echo "pr_version=$PR_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "❌ version.txt not found in PR branch"
+            exit 1
+          fi
+
+      - name: 🧮 Compare versions
+        if: steps.label_check.outputs.is_skippable != 'true'
+        id: compare
+        run: |
+          echo "Main: ${{ steps.main_version.outputs.main_version }}"
+          echo "PR:   ${{ steps.pr_version.outputs.pr_version }}"
+          if [ "${{ steps.main_version.outputs.main_version }}" = "${{ steps.pr_version.outputs.pr_version }}" ]; then
+            echo "match=true" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "match=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: 💬 Manage PR comments (add or delete)
+        if: steps.label_check.outputs.is_skippable != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commentIdentifier = "⚠️ **Version Check Failed**";
+            const mainVersion = "${{ steps.main_version.outputs.main_version }}";
+            const prVersion = "${{ steps.pr_version.outputs.pr_version }}";
+            const versionMismatch = "${{ steps.compare.outputs.match }}" === "true";
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComments = comments.filter(c => c.body.includes(commentIdentifier));
+
+            if (versionMismatch) {
+              if (existingComments.length === 0) {
+                const commentBody = `
+                ${commentIdentifier}
+
+                Hey! This PR will **not be merged** 🚫  
+                The version in \`version.txt\` has **not been bumped** compared to the main branch or latest release.
+
+                🧾 **Details:**
+                - **Main branch version:** \`${mainVersion || "unknown"}\`
+                - **PR branch version:** \`${prVersion || "unknown"}\`
+
+                👉 Please update \`version.txt\` to a new version before requesting merge.
+                `;
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: commentBody
+                });
+                core.setFailed("Version not bumped - comment added.");
+              } else {
+                console.log("Version comment already exists, skipping duplicate comment.");
+                core.setFailed("Version not bumped - existing comment found.");
+              }
+            } else {
+              for (const c of existingComments) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: c.id,
+                });
+                console.log(`🧽 Deleted old version warning comment (ID: ${c.id})`);
+              }
+            }
