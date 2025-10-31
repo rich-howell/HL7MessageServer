@@ -1,0 +1,66 @@
+name: 🚦 Run Tests on HL7 Message Server
+
+on:
+  pull_request: 
+    types: [opened, synchronize, reopened]
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 🧪 Build & Test
+    runs-on: windows-latest
+
+    steps:
+
+      - name: 🏷️ Check PR labels
+        id: label_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const labels = pr.labels.map(l => l.name.toLowerCase());
+            const skipLabels = ["chore"];
+            const isSkippable = labels.some(l => skipLabels.includes(l));
+
+            console.log("PR Labels:", labels);
+            console.log("Is skippable:", isSkippable);
+
+            core.setOutput("is_skippable", isSkippable);
+
+      - name: 🛑 Skip version check for skippable PRs
+        if: steps.label_check.outputs.is_skippable == 'true'
+        run: |
+          echo "🛠️ This PR is labelled as a skip type (e.g. chore) — skipping version check."
+          exit 0
+
+      - name: 📦 Checkout repository
+        if: steps.label_check.outputs.is_skippable != 'true'
+        uses: actions/checkout@v4
+
+      - name: 🧩 Setup .NET SDK
+        if: steps.label_check.outputs.is_skippable != 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 🏗️ Restore dependencies
+        if: steps.label_check.outputs.is_skippable != 'true'
+        run: dotnet restore
+
+      - name: 🧠 Build solution
+        if: steps.label_check.outputs.is_skippable != 'true'
+        run: dotnet build --configuration Release --no-restore
+
+      - name: ✅ Run tests
+        if: steps.label_check.outputs.is_skippable != 'true'
+        run: dotnet test --configuration Release --no-build --verbosity normal

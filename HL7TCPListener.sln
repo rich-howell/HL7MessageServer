@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36616.10 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HL7TCPListener", "HL7TCPListener\HL7TCPListener.csproj", "{A3B9C0D1-BB2D-439E-81B6-FCB299954034}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HL7TCPListener.Tests", "HL7TCPListener.Tests\HL7TCPListener.Tests.csproj", "{04149825-FA2D-446C-8FB2-20985BC4948B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A3B9C0D1-BB2D-439E-81B6-FCB299954034}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A3B9C0D1-BB2D-439E-81B6-FCB299954034}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A3B9C0D1-BB2D-439E-81B6-FCB299954034}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04149825-FA2D-446C-8FB2-20985BC4948B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04149825-FA2D-446C-8FB2-20985BC4948B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04149825-FA2D-446C-8FB2-20985BC4948B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04149825-FA2D-446C-8FB2-20985BC4948B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
