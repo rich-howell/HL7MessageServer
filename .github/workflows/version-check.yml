@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: 🏷️ Check PR labels
         id: label_check
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { data: pr } = await github.rest.pulls.get({
@@ -41,14 +41,14 @@ jobs:
 
       - name: 🛒 Checkout main
         if: steps.label_check.outputs.is_skippable != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
           path: main
 
       - name: 🛒 Checkout PR branch
         if: steps.label_check.outputs.is_skippable != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: pr
 
@@ -96,7 +96,7 @@ jobs:
 
       - name: 💬 Manage PR comments (add or delete)
         if: steps.label_check.outputs.is_skippable != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const commentIdentifier = "⚠️ **Version Check Failed**";
