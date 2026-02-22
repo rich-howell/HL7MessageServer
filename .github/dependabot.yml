@@ -1,0 +1,68 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "nuget" # https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#package-ecosystem-
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly" # How often dependabot will run
+      day: "friday" # On what day dependabot will run
+      time: "06:00" # At what time dependabot will run
+      timezone: "Europe/London" # What timezone would you like dependabot to run in
+    open-pull-requests-limit: 5 # Limit pull requests to avoid being flooded with pull requests
+    commit-message:
+      prefix: "[Dep]" # This will prefix the pull request with this value
+    labels:
+      - "dependencies" # This label must exist in the repository
+
+    # This section allows you to ignore certain versions, this is useful if you are running a certain version of .net
+    ignore:
+      - dependency-name: "Microsoft.Extensions.*"
+        versions: [">=9.0.0"]
+      - dependency-name: "Microsoft.EntityFrameworkCore.*"
+        versions: [">=9.0.0"]
+      - dependency-name: "System.*"
+        versions: [">=9.0.0"]
+      - dependency-name: "Microsoft.VisualStudio.*"
+        versions: [">=9.0.0"]    
+ 
+    # This section allows you to group similar updates into one pull request
+    groups:
+      dotnet-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+      dotnet-entity-framework:
+        patterns:
+          - "Microsoft.EntityFrameworkCore.*"
+      system:
+        patterns:
+          - "System.*"
+      visual-studio:
+        patterns:
+          - "Microsoft.VisualStudio.*"
+
+
+  # ------------------------------
+  # GitHub Actions (CI)
+  # DON'T EDIT THE BELOW
+  # ------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "06:15"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "[CI]"
+    labels:
+      - "dependencies"
+      - "ci"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

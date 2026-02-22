@@ -1,98 +1,141 @@
-name: 🚀 Build & Release HL7 Message Server
+name: Release
 
 on:
-  push:
+  pull_request:
     branches:
       - main
+    types: [closed]
 
 permissions:
   contents: write
-  pull-requests: read  # Needed to read PR labels
+  pull-requests: write
 
 jobs:
   build-and-release:
+    if: >
+      github.event.pull_request.merged == true &&
+      !contains(join(github.event.workflow_run.pull_requests.*.labels.*.name, ','), 'ci') &&
+      !contains(join(github.event.workflow_run.pull_requests.*.labels.*.name, ','), 'chore') &&
+      !contains(join(github.event.workflow_run.pull_requests.*.labels.*.name, ','), 'wip')
+
     runs-on: windows-latest
 
     steps:
-      - name: 🏷️ Check last merged PR labels
-        id: label_check
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Fetch recently merged PRs targeting main
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: "closed",
-              sort: "updated",
-              direction: "desc",
-              per_page: 5
-            });
-
-            // Find the most recent one that was merged
-            const mergedPR = prs.find(pr => pr.merged_at && pr.base.ref === "main");
-
-            if (!mergedPR) {
-              console.log("⚠️ No merged PR found for this push - proceeding with release.");
-              core.setOutput("is_skippable", false);
-              return;
-            }
-
-            const labels = mergedPR.labels.map(l => l.name.toLowerCase());
-            const skipLabels = ["chore"]; // add more later e.g. "ci", "docs"
-            const isSkippable = labels.some(l => skipLabels.includes(l));
-
-            console.log("Latest merged PR:", mergedPR.title);
-            console.log("Labels:", labels);
-            console.log("Is skippable:", isSkippable);
-
-            core.setOutput("is_skippable", isSkippable);
-            core.setOutput("merged_pr_title", mergedPR.title);
-            core.setOutput("merged_pr_number", mergedPR.number);
-
-      - name: 🛑 Skip release for skippable PRs
-        if: steps.label_check.outputs.is_skippable == 'true'
-        run: |
-          echo "🛠️ Skipping release: PR labelled as a skip type (e.g. chore)"
-          exit 0
-
-      - name: 🧰 Checkout repository
-        if: steps.label_check.outputs.is_skippable != 'true'
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: 🧩 Setup .NET SDK
-        if: steps.label_check.outputs.is_skippable != 'true'
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
+      - name: Dump GitHub context
+        run: echo '${{ toJson(github.event) }}'
 
-      - name: 🏗️ Publish self-contained executable
-        if: steps.label_check.outputs.is_skippable != 'true'
+      - name: Get GitHub Context
         run: |
-          cd src/HL7Forge.Gui
-          dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true
+          $repo = "${{ github.repository }}".Split("/")[1]
+          echo "REPO_NAME=$repo" >> $env:GITHUB_ENV
 
-      - name: 🔢 Get version from version.txt
-        if: steps.label_check.outputs.is_skippable != 'true'
+      - name: Detect .NET project + SDK
+        id: dotnet
+        shell: pwsh
+        run: |
+          $csproj = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
+
+          if (-not $csproj) {
+            Write-Error "❌ No .csproj file found."
+          }
+
+          Write-Host "Found project: $($csproj.FullName)"
+
+          [xml]$xml = Get-Content $csproj.FullName
+
+          $tfm = $xml.Project.PropertyGroup.TargetFramework
+          if (-not $tfm) {
+            $tfm = $xml.Project.PropertyGroup.TargetFrameworks.Split(';')[0]
+          }
+
+          if (-not $tfm) {
+            Write-Error "❌ No TargetFramework found."
+          }
+
+          if ($tfm -match "net(\d+)\.(\d+)") {
+            $sdkVersion = "$($matches[1]).$($matches[2]).x"
+          }
+          else {
+            Write-Error "❌ Could not parse SDK version."
+          }
+
+          $projectPath = $csproj.FullName
+          $projectDir  = $csproj.Directory.FullName
+
+          echo "version=$sdkVersion" >> $env:GITHUB_OUTPUT
+          echo "projectPath=$projectPath" >> $env:GITHUB_OUTPUT
+          echo "projectDir=$projectDir" >> $env:GITHUB_OUTPUT
+          echo "tfm=$tfm" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ steps.dotnet.outputs.version }}
+
+      - name: Publish self-contained executable
+        shell: pwsh
+        run: |
+          $project = "${{ steps.dotnet.outputs.projectPath }}"
+
+          dotnet publish $project `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            /p:PublishSingleFile=true `
+            /p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: Ensure version.txt exists
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "./version.txt")) {
+            Write-Error "❌ version.txt missing — release cannot continue."
+          }
+
+      - name: Get version from version.txt
         id: version
         run: |
           $version = Get-Content ./version.txt | Select-String -Pattern '(\d+\.\d+\.\d+)' | ForEach-Object { $_.Matches.Value }
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: 🗜️ Package published build
-        if: steps.label_check.outputs.is_skippable != 'true'
+      - name: Package published build
+        id: package
+        shell: pwsh
         run: |
-          $zipName = "HL7-Forge-v${{ steps.version.outputs.version }}.zip"
-          $publishDir = "src/HL7Forge.Gui/bin/Release/net8.0-windows/win-x64/publish"
-          Compress-Archive -Path "$publishDir/*" -DestinationPath "src/HL7Forge.Gui/bin/Release/$zipName"
-          Write-Host "Created archive: $zipName"
+          $version = "${{ steps.version.outputs.version }}"
+          $repo    = "${{ env.REPO_NAME }}"
+          $tfm     = "${{ steps.dotnet.outputs.tfm }}"
+          $projDir = "${{ steps.dotnet.outputs.projectDir }}"
 
-      - name: 📝 Generate release notes
-        if: steps.label_check.outputs.is_skippable != 'true'
+          $publishDir = Join-Path $projDir "bin\Release\$tfm\win-x64\publish"
+
+          if (-not (Test-Path $publishDir)) {
+            Write-Error "❌ Publish directory not found: $publishDir"
+          }
+
+          $zipName = "$repo-v$version.zip"
+          $zipPath = Join-Path $PWD $zipName
+
+          Compress-Archive `
+            -Path "$publishDir\*" `
+            -DestinationPath $zipPath
+
+          Write-Host "Created archive: $zipPath"
+
+          echo "zipPath=$zipPath" >> $env:GITHUB_OUTPUT
+
+      - name: Generate release notes
         id: changelog
+        shell: pwsh
         run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $notesFile = "release_notes.md"
+
+          # Find last tag
           $lastTag = git describe --tags --abbrev=0 2>$null
           if (-not $lastTag) { $lastTag = "" }
 
@@ -104,30 +147,127 @@ jobs:
             $notes = git log --pretty=format:"- %s (%an)" | Out-String
           }
 
-          if (-not $notes) { $notes = "No changes listed." }
+          if (-not $notes.Trim()) {
+            Write-Error "❌ No commits found since last release."
+          }
 
-          $notes | Out-File release_notes.md -Encoding utf8
+          $notes | Out-File $notesFile -Encoding utf8
+
+          if (-not (Test-Path $notesFile)) {
+            Write-Error "❌ release_notes.md was not created."
+          }
+
+          # Ensure notes contain the version
+          $content = Get-Content $notesFile -Raw
+
+          if ($content -notmatch $version) {
+            Write-Error "❌ Release notes do not contain version $version."
+          }
+
           echo "notes<<EOF" >> $env:GITHUB_OUTPUT
-          cat release_notes.md >> $env:GITHUB_OUTPUT
+          cat $notesFile >> $env:GITHUB_OUTPUT
           echo "EOF" >> $env:GITHUB_OUTPUT
 
-      - name: 🏷️ Create GitHub Release
-        if: steps.label_check.outputs.is_skippable != 'true'
+      - name: Comment on release notes failure
+        if: failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const sha = context.payload.pull_request.merge_commit_sha;
+
+            // Find PR associated with commit
+            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: sha,
+            });
+
+            if (!pulls.length) {
+              core.info("No PR associated with this commit.");
+              return;
+            }
+
+            const pr = pulls[0];
+
+            const body = `❌ **Release Notes Validation Failed**
+
+            The release workflow could not generate valid release notes for version \`${{ steps.version.outputs.version }}\`.
+
+            Please ensure:
+
+            • release_notes.md is generated  
+            • Notes contain the version number  
+            • Changelog entries exist since last tag`;
+
+                  const { data: comments } = await github.rest.issues.listComments({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                  });
+
+                  const existing = comments.find(c =>
+                    c.user.type === "Bot" &&
+                    c.body.includes("Release Notes Validation Failed")
+                  );
+
+                  if (!existing) {
+                    await github.rest.issues.createComment({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: pr.number,
+                      body
+                    });
+                  }
+
+      - name: Remove release notes failure comment if fixed
+        if: success()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const sha = context.payload.pull_request.merge_commit_sha;
+
+            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: sha,
+            });
+
+            if (!pulls.length) return;
+
+            const pr = pulls[0];
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+            });
+
+            for (const comment of comments) {
+              if (
+                comment.user.type === "Bot" &&
+                comment.body.includes("Release Notes Validation Failed")
+              ) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id,
+                });
+              }
+            }
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          name: "HL7 Forge v${{ steps.version.outputs.version }}"
+          name: "${{ env.REPO_NAME }} v${{ steps.version.outputs.version }}"
           draft: false
           prerelease: false
           body: |
-            ## 🚀 HL7 Forge v${{ steps.version.outputs.version }}
-
-            🧠 Built with .NET 8  
-            💾 Self-contained executable - no install required  
+            ## 🚀 ${{ env.REPO_NAME }} v${{ steps.version.outputs.version }}
 
             ### Recent Changes
             ${{ steps.changelog.outputs.notes }}
 
             _Built automatically from PR #${{ steps.label_check.outputs.merged_pr_number }} - "${{ steps.label_check.outputs.merged_pr_title }}."_
           files: |
-            src/HL7Forge.Gui/bin/Release/HL7-Forge-v${{ steps.version.outputs.version }}.zip
+            ${{ steps.package.outputs.zipPath }}
