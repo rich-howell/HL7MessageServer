@@ -170,7 +170,7 @@ jobs:
 
       - name: Comment on release notes failure
         if: failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = context.payload.pull_request.merge_commit_sha;
@@ -221,7 +221,7 @@ jobs:
 
       - name: Remove release notes failure comment if fixed
         if: success()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = context.payload.pull_request.merge_commit_sha;
