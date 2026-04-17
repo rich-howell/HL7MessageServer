@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: 🏷️ Check PR labels
         id: label_check
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const { data: pr } = await github.rest.pulls.get({
@@ -96,7 +96,7 @@ jobs:
 
       - name: 💬 Manage PR comments (add or delete)
         if: steps.label_check.outputs.is_skippable != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const commentIdentifier = "⚠️ **Version Check Failed**";
